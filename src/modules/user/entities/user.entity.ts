@@ -5,11 +5,15 @@ import {
   BeforeInsert,
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { UserRoles } from '../enums/user.enum';
+import { Post } from 'src/modules/post/entities/post.entity';
+import { Comment } from 'src/modules/comment/entities/comment.entity';
 
 @Entity({ name: 'users' })
 export class User extends BaseEntity {
@@ -37,7 +41,7 @@ export class User extends BaseEntity {
   @Column()
   password: string;
 
-  @Column({ type: 'enum', enum: UserRoles, default: UserRoles.MEMBER })
+  @Column({ type: 'enum', enum: UserRoles, default: UserRoles.USER })
   role: UserRoles;
 
   @ApiProperty({ description: 'When user was created.' })
@@ -47,6 +51,18 @@ export class User extends BaseEntity {
   @ApiProperty({ description: 'When user was updated.' })
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ApiProperty({ description: 'When user was deleted.' })
+  @DeleteDateColumn()
+  deletedAt?: Date;
+
+  @ApiProperty({ description: 'List of posts' })
+  @OneToMany(() => Post, (post) => post.postBy)
+  posts: Post[];
+
+  @ApiProperty({ description: 'List of comments' })
+  @OneToMany(() => Comment, (comment) => comment.commentBy)
+  comments: Comment[];
 
   @BeforeInsert()
   async setPassword(password: string) {

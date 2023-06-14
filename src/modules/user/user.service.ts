@@ -18,8 +18,8 @@ export class UserService {
     return `This action returns all user`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async findOneById(id: number): Promise<User | undefined> {
+    return User.findOne({ where: { id } });
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
