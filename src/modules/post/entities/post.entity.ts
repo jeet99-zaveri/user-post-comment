@@ -6,12 +6,14 @@ import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
+  Entity,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+@Entity({ name: 'posts' })
 export class Post extends BaseEntity {
   @ApiProperty({ description: 'Primary key as Post ID', example: 1 })
   @PrimaryGeneratedColumn({ comment: 'The post unique identifier' })
@@ -31,23 +33,19 @@ export class Post extends BaseEntity {
   @Column()
   filePath: string;
 
-  @ApiProperty({ description: 'When user was created.' })
   @CreateDateColumn()
   createdAt!: Date;
 
-  @ApiProperty({ description: 'When user was updated.' })
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @ApiProperty({ description: 'When user was deleted.' })
   @DeleteDateColumn()
   deletedAt?: Date;
 
-  @ApiProperty({ description: 'Post of the user' })
+  @ApiProperty({ description: 'Owner of the post' })
   @ManyToOne(() => User, (user) => user.posts)
-  postBy: User;
+  postedBy: User;
 
-  @ApiProperty({ description: 'List of comments' })
   @OneToMany(() => Comment, (comment) => comment.post)
   comments: Comment[];
 }

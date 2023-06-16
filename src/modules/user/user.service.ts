@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -6,6 +6,13 @@ import { User } from './entities/user.entity';
 @Injectable()
 export class UserService {
   async create(createUserDto: CreateUserDto): Promise<User> {
+    if (createUserDto.password !== createUserDto.confirmPassword) {
+      throw new HttpException(
+        'Confirm Password does not match with Password.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
     const newUser = new User();
     newUser.name = createUserDto.name;
     newUser.email = createUserDto.email;

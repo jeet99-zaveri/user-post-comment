@@ -41,28 +41,28 @@ export class UserController {
   }
 
   @Get()
-  @ApiSecurity('Bearer')
+  @ApiSecurity('bearer')
   @UseGuards(JwtAuthGuard)
   findAll() {
     return this.userService.findAll();
   }
 
   @Get(':id')
-  @ApiSecurity('Bearer')
+  @ApiSecurity('bearer')
   @UseGuards(JwtAuthGuard)
   findOneById(@Param('id') id: string) {
     return this.userService.findOneById(+id);
   }
 
   @Patch(':id')
-  @ApiSecurity('Bearer')
+  @ApiSecurity('bearer')
   @UseGuards(JwtAuthGuard)
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(+id, updateUserDto);
   }
 
   @Delete(':id')
-  @ApiSecurity('Bearer')
+  @ApiSecurity('bearer')
   @UseGuards(JwtAuthGuard)
   remove(@Param('id') id: string) {
     return this.userService.remove(+id);

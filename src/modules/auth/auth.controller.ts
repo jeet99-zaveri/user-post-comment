@@ -1,5 +1,13 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
-import { ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Post,
+  Request,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './local.auth.guard';
 import { LoginDto } from './dto/login.dto';
@@ -9,9 +17,16 @@ import { LoginDto } from './dto/login.dto';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @ApiCreatedResponse()
-  @UseGuards(LocalAuthGuard)
+  @ApiOkResponse({
+    schema: {
+      example: {
+        access_token: 'string',
+      },
+    },
+  })
   @Post('login')
+  @UsePipes(ValidationPipe)
+  @UseGuards(LocalAuthGuard)
   async login(@Request() req, @Body() loginDto: LoginDto): Promise<any> {
     return this.authService.generateToken(req.user);
   }

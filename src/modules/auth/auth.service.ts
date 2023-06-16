@@ -13,8 +13,9 @@ export class AuthService {
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.userService.getUserByEmail(email);
     if (user) {
-      if (!bcrypt.compareSync(password, user.password))
-        throw new UnauthorizedException();
+      if (!bcrypt.compareSync(password, user.password)) {
+        throw new UnauthorizedException('Invalid emailID or password');
+      }
 
       return user;
     }
@@ -27,6 +28,7 @@ export class AuthService {
       access_token: this.jwtService.sign({
         name: user.name,
         id: user.id,
+        role: user.role,
       }),
     };
   }

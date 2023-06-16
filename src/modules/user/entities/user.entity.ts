@@ -11,7 +11,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserRoles } from '../enums/user.enum';
+import { ROLES } from '../enums/user.enum';
 import { Post } from 'src/modules/post/entities/post.entity';
 import { Comment } from 'src/modules/comment/entities/comment.entity';
 
@@ -41,26 +41,21 @@ export class User extends BaseEntity {
   @Column()
   password: string;
 
-  @Column({ type: 'enum', enum: UserRoles, default: UserRoles.USER })
-  role: UserRoles;
+  @Column({ type: 'enum', enum: ROLES, default: ROLES.USER })
+  role: ROLES;
 
-  @ApiProperty({ description: 'When user was created.' })
   @CreateDateColumn()
   createdAt: Date;
 
-  @ApiProperty({ description: 'When user was updated.' })
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ApiProperty({ description: 'When user was deleted.' })
   @DeleteDateColumn()
   deletedAt?: Date;
 
-  @ApiProperty({ description: 'List of posts' })
-  @OneToMany(() => Post, (post) => post.postBy)
+  @OneToMany(() => Post, (post) => post.postedBy)
   posts: Post[];
 
-  @ApiProperty({ description: 'List of comments' })
   @OneToMany(() => Comment, (comment) => comment.commentBy)
   comments: Comment[];
 

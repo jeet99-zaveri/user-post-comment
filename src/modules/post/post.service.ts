@@ -1,26 +1,61 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { Post } from './entities/post.entity';
+import {
+  IPaginationOptions,
+  Pagination,
+  paginate,
+} from 'nestjs-typeorm-paginate';
+import { PostRepository } from './post.repository';
 
 @Injectable()
 export class PostService {
-  create(createPostDto: CreatePostDto) {
-    return 'This action adds a new post';
+  constructor(private readonly postRepository: PostRepository) {}
+
+  async create(file: Express.Multer.File, createPostDto: CreatePostDto, req) {
+    const postPayload = new Post();
+    postPayload.title = createPostDto.title;
+    postPayload.filePath = file.path;
+    postPayload.postedBy = req.user.id;
+
+    return await postPayload.save();
   }
 
-  findAll() {
-    return `This action returns all post`;
+  async paginate(options: IPaginationOptions): Promise<Pagination<Post>> {
+    const qb = this.postRepository
+      .createQueryBuilder('p')
+      .leftJoin('p.postedBy', 'pb')
+      .leftJoin('p.comments', 'cm')
+      .leftJoin('cm.commentBy', 'cb')
+      .select(['p.id', 'p.title', 'p.filePath', 'pb.id', 'pb.name', 'cb.name'])
+      .orderBy('p.id', 'DESC');
+
+    return paginate<Post>(qb, options);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} post`;
+  async findOne(id: number): Promise<Post> {
+    return await this.postRepository
+      .createQueryBuilder('p')
+      .where({ id })
+      .leftJoin('p.postedBy', 'pb')
+      .leftJoin('p.comments', 'cm')
+      .leftJoin('cm.commentBy', 'cb')
+      .select(['p.id', 'p.title', 'p.filePath', 'pb.id', 'pb.name', 'cb.name'])
+      .getOne();
   }
 
-  update(id: number, updatePostDto: UpdatePostDto) {
-    return `This action updates a #${id} post`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} post`;
+  async update(post: Post, updatePostDto: UpdatePostDto) {
+    return (
+      (
+        await this.postRepository
+          .createQueryBuilder()
+          .update(Post, updatePostDto)
+          .where('id = :id', { id: post.id })
+          .returning(['id', 'title', 'filePath'])
+          .updateEntity(true)
+          .execute()
+      ).raw[0] ?? null
+    );
   }
 }
