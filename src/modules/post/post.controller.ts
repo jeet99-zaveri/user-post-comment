@@ -16,7 +16,6 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   UnauthorizedException,
-  NotFoundException,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -33,13 +32,17 @@ import { ApiPaginatedResponse } from 'src/common/decorators/api.pagination.respo
 import { IPaginationOptions, Pagination } from 'nestjs-typeorm-paginate';
 import { ROLES } from '../user/enums/user.enum';
 import { HttpStatus } from '@nestjs/common';
+import { CommentService } from '../comment/comment.service';
 
 @ApiTags('Posts')
 @Controller('post')
 @ApiSecurity('bearer')
 @UseGuards(JwtAuthGuard)
 export class PostController {
-  constructor(private readonly postService: PostService) {}
+  constructor(
+    private readonly postService: PostService,
+    private readonly commentService: CommentService,
+  ) {}
 
   @ApiCreatedResponse()
   @Post()
@@ -65,7 +68,12 @@ export class PostController {
     @Body() createPostDto: CreatePostDto,
     @Request() req,
   ): Promise<Posts> {
-    return await this.postService.create(file, createPostDto, req);
+    const postPayload = new Posts();
+    postPayload.title = createPostDto.title;
+    postPayload.filePath = file.path;
+    postPayload.postedBy = req.user.id;
+
+    return await postPayload.save();
   }
 
   @ApiPaginatedResponse({ model: Posts, description: 'List of posts.' })
@@ -86,17 +94,8 @@ export class PostController {
   @UsePipes(ValidationPipe)
   @UseGuards(RolesGuard)
   @Roles('user', 'admin')
-  async findOne(@Param('id') id: string, @Request() req) {
-    const post = await this.postService.findOne(+id);
-    if (post) {
-      if (req.user.role !== ROLES.ADMIN && req.user.id !== post.postedBy.id) {
-        throw new UnauthorizedException("You're not allow to get this post.");
-      }
-
-      return post;
-    } else {
-      throw new NotFoundException('Post is not found.');
-    }
+  async findOne(@Param('id') id: string) {
+    return await this.postService.findOne(+id);
   }
 
   @Patch(':id')
@@ -106,14 +105,9 @@ export class PostController {
     @Request() req,
   ) {
     const post = await this.postService.findOne(+id);
-    if (post) {
-      if (req.user.role !== ROLES.ADMIN && req.user.id !== post.postedBy.id) {
-        throw new UnauthorizedException(
-          "You're not allow to update this post.",
-        );
-      }
-    } else {
-      throw new NotFoundException('Post is not found.');
+
+    if (req.user.role !== ROLES.ADMIN && req.user.id !== post.postedBy.id) {
+      throw new UnauthorizedException("You're not allow to update this post.");
     }
 
     return this.postService.update(post, updatePostDto);
@@ -122,16 +116,12 @@ export class PostController {
   @Delete(':id')
   async remove(@Param('id') id: string, @Request() req) {
     const post = await this.postService.findOne(+id);
-    if (post) {
-      if (req.user.role !== ROLES.ADMIN && req.user.id !== post.postedBy.id) {
-        throw new UnauthorizedException(
-          "You're not allow to update this post.",
-        );
-      }
-    } else {
-      throw new NotFoundException('Post is not found.');
+
+    if (req.user.role !== ROLES.ADMIN && req.user.id !== post.postedBy.id) {
+      throw new UnauthorizedException("You're not allow to update this post.");
     }
 
+    await this.commentService.removeCommentsOfPost(post.id);
     await post.softRemove();
 
     return { status: HttpStatus.OK, message: 'Post deleted successfully.' };

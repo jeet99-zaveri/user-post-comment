@@ -1,4 +1,12 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateCommentDto } from './create-comment.dto';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, MinLength } from 'class-validator';
 
-export class UpdateCommentDto extends PartialType(CreateCommentDto) {}
+export class UpdateCommentDto {
+  @ApiProperty({
+    description: 'Comment of the post',
+    example: 'Superb',
+  })
+  @IsNotEmpty()
+  @MinLength(3)
+  comment?: string;
+}

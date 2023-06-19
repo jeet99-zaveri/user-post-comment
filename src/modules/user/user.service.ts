@@ -1,36 +1,83 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import {
+  IPaginationOptions,
+  Pagination,
+  paginate,
+} from 'nestjs-typeorm-paginate';
+import { UserRepository } from './user.repository';
+import { ROLES } from './enums/user.enum';
+import { Not } from 'typeorm';
 
 @Injectable()
 export class UserService {
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    if (createUserDto.password !== createUserDto.confirmPassword) {
-      throw new HttpException(
-        'Confirm Password does not match with Password.',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+  constructor(private readonly userRepository: UserRepository) {}
+
+  async paginate(options: IPaginationOptions): Promise<Pagination<User>> {
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      .where({ role: Not(ROLES.ADMIN) })
+      .leftJoin('u.posts', 'p')
+      .leftJoin('p.comments', 'c')
+      .leftJoin('c.commentBy', 'cb')
+      .select([
+        'u.id',
+        'u.name',
+        'p.id',
+        'p.title',
+        'c.id',
+        'c.comment',
+        'cb.id',
+        'cb.name',
+      ])
+      .orderBy('u.id', 'DESC');
+
+    return paginate<User>(qb, options);
+  }
+
+  async findOne(id: number): Promise<User> {
+    const user = await this.userRepository
+      .createQueryBuilder('u')
+      .where({ id, role: Not(ROLES.ADMIN) })
+      .leftJoin('u.posts', 'p')
+      .leftJoin('p.comments', 'c')
+      .leftJoin('c.commentBy', 'cb')
+      .select([
+        'u.id',
+        'u.name',
+        'p.id',
+        'p.title',
+        'c.id',
+        'c.comment',
+        'cb.id',
+        'cb.name',
+      ])
+      .getOne();
+
+    if (!user) {
+      throw new NotFoundException('User is not found.');
     }
 
-    const newUser = new User();
-    newUser.name = createUserDto.name;
-    newUser.email = createUserDto.email;
-    newUser.password = createUserDto.password;
-
-    return await newUser.save();
+    return user;
   }
 
-  findAll() {
-    return `This action returns all user`;
-  }
-
-  async findOneById(id: number): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     return User.findOne({ where: { id } });
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async update(user: User, updateUserDto: UpdateUserDto) {
+    return (
+      (
+        await this.userRepository
+          .createQueryBuilder()
+          .update(User, updateUserDto)
+          .where('id = :id', { id: user.id })
+          .returning(['id', 'email', 'name'])
+          .updateEntity(true)
+          .execute()
+      ).raw[0] ?? null
+    );
   }
 
   remove(id: number) {

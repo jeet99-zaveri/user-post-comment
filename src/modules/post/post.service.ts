@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { CreatePostDto } from './dto/create-post.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { Post } from './entities/post.entity';
 import {
@@ -13,36 +12,53 @@ import { PostRepository } from './post.repository';
 export class PostService {
   constructor(private readonly postRepository: PostRepository) {}
 
-  async create(file: Express.Multer.File, createPostDto: CreatePostDto, req) {
-    const postPayload = new Post();
-    postPayload.title = createPostDto.title;
-    postPayload.filePath = file.path;
-    postPayload.postedBy = req.user.id;
-
-    return await postPayload.save();
-  }
-
   async paginate(options: IPaginationOptions): Promise<Pagination<Post>> {
     const qb = this.postRepository
       .createQueryBuilder('p')
       .leftJoin('p.postedBy', 'pb')
       .leftJoin('p.comments', 'cm')
       .leftJoin('cm.commentBy', 'cb')
-      .select(['p.id', 'p.title', 'p.filePath', 'pb.id', 'pb.name', 'cb.name'])
+      .select([
+        'p.id',
+        'p.title',
+        'p.filePath',
+        'pb.id',
+        'pb.name',
+        'cm.id',
+        'cm.comment',
+        'cb.id',
+        'cb.name',
+      ])
       .orderBy('p.id', 'DESC');
 
     return paginate<Post>(qb, options);
   }
 
   async findOne(id: number): Promise<Post> {
-    return await this.postRepository
+    const post = await this.postRepository
       .createQueryBuilder('p')
       .where({ id })
       .leftJoin('p.postedBy', 'pb')
       .leftJoin('p.comments', 'cm')
       .leftJoin('cm.commentBy', 'cb')
-      .select(['p.id', 'p.title', 'p.filePath', 'pb.id', 'pb.name', 'cb.name'])
+      .select([
+        'p.id',
+        'p.title',
+        'p.filePath',
+        'pb.id',
+        'pb.name',
+        'cm.id',
+        'cm.comment',
+        'cb.id',
+        'cb.name',
+      ])
       .getOne();
+
+    if (!post) {
+      throw new NotFoundException('Post is not found.');
+    }
+
+    return post;
   }
 
   async update(post: Post, updatePostDto: UpdatePostDto) {

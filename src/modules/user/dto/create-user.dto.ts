@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, Length, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  Length,
+  Matches,
+  MinLength,
+} from 'class-validator';
 import { MESSAGES, REGEX } from '../../../app.utils';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -8,6 +14,7 @@ export class CreateUserDto {
     example: 'Jeet Zaveri',
   })
   @IsNotEmpty()
+  @MinLength(3)
   name: string;
 
   @ApiProperty({
