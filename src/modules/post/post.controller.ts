@@ -16,6 +16,8 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   UnauthorizedException,
+  Inject,
+  NotFoundException,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -33,6 +35,9 @@ import { IPaginationOptions, Pagination } from 'nestjs-typeorm-paginate';
 import { ROLES } from '../user/enums/user.enum';
 import { HttpStatus } from '@nestjs/common';
 import { CommentService } from '../comment/comment.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { ClientProxy, RmqRecordBuilder } from '@nestjs/microservices';
 
 @ApiTags('Posts')
 @Controller('post')
@@ -42,6 +47,8 @@ export class PostController {
   constructor(
     private readonly postService: PostService,
     private readonly commentService: CommentService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    @Inject('HELLO_SERVICE') private readonly client: ClientProxy,
   ) {}
 
   @ApiCreatedResponse()
@@ -95,6 +102,16 @@ export class PostController {
   @UseGuards(RolesGuard)
   @Roles('user', 'admin')
   async findOne(@Param('id') id: string) {
+    const message = ':cat:';
+    const record = new RmqRecordBuilder(message)
+      .setOptions({
+        headers: {
+          ['x-version']: '1.0.0',
+        },
+        priority: 3,
+      })
+      .build();
+    this.client.send('send_notification', record).subscribe();
     return await this.postService.findOne(+id);
   }
 
@@ -125,5 +142,27 @@ export class PostController {
     await post.softRemove();
 
     return { status: HttpStatus.OK, message: 'Post deleted successfully.' };
+  }
+
+  @Get('/redisPost/:postId')
+  async getPost(@Param('postId') postId) {
+    const cachedData = await this.cacheManager.get(`${postId.toString()} Post`);
+    if (cachedData) {
+      console.log('Getting data from cache', cachedData);
+      return { status: HttpStatus.OK, data: cachedData };
+    }
+
+    const post = await this.postService.findOne(postId);
+    if (!post) throw new NotFoundException('Post does not exist');
+
+    await this.cacheManager.set(`${postId.toString()} Post`, post);
+    console.log('postId.toString() :::::::::::::: ', postId.toString(), post);
+
+    const newCachedData = await this.cacheManager.get(
+      `${postId.toString()} Post`,
+    );
+    console.log('data set to cache', newCachedData);
+
+    return { status: HttpStatus.OK, data: post };
   }
 }
